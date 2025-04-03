@@ -172,7 +172,7 @@
       - Menggunakan JavaScript dari `C:\laragon\www\WBE\frontend\user\assets\js\game.js`.
   
   - **Backend User**:
-    - `C:\laragon\www\WBE\frontend\user\backend\main.go`:
+    - `C:\laragon\www\WBE\main.go`:
       - Titik masuk utama aplikasi Go.
       - Memuat konfigurasi dari `.env` menggunakan `C:\laragon\www\WBE\frontend\user\backend\config\config.go`.
       - Menginisialisasi koneksi database menggunakan `C:\laragon\www\WBE\frontend\user\backend\database\db.go`.
@@ -339,7 +339,7 @@
 ## 4. Pengembangan Backend
 - **Inisialisasi Proyek Go**: 
   - Setup project Go di `C:\laragon\www\WBE\frontend\user\backend\`
-  - File utama: `C:\laragon\www\WBE\frontend\user\backend\main.go` - Entry point aplikasi
+  - File utama: `C:\laragon\www\WBE\main.go` - Entry point aplikasi
   - Konfigurasi aplikasi: `C:\laragon\www\WBE\frontend\user\backend\config\config.go` - Load konfigurasi dari .env
   
 - **Struktur Database**:
@@ -488,7 +488,7 @@
   - Gunakan Go templates untuk rendering HTML dari backend
 
 - **Backend Admin**:
-  - `C:\laragon\www\WBE\frontend\admin\backend\main.go`
+  - `C:\laragon\www\WBE\main.go`
     - Entry point untuk aplikasi admin
     - Setup router dan middleware
   
