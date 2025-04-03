@@ -522,9 +522,10 @@
     - Jika belum ada Superadmin, maka sistem akan otomatis mengarahkan ke halaman `register_superadmin.html` untuk mendaftarkan Superadmin pertama kali.
     - Middleware di `C:\laragon\www\WBE\frontend\admin\backend\middleware\superadmin_checker.go` menangani logika redirect ini.
     
-  - **Formulir Pendaftaran Superadmin**:
+  - **Halaman Pendaftaran Superadmin (Register_superadmin.html)**:
+    - Halaman ini BERDIRI SENDIRI dan merupakan halaman yang muncul pertama kali saat sistem belum memiliki superadmin.
     - Terletak di `C:\laragon\www\WBE\frontend\admin\template\register_superadmin.html`
-    - Memperluas `C:\laragon\www\WBE\frontend\admin\template\base.html` untuk tampilan yang konsisten.
+    - Halaman ini tidak menggunakan template base.html dari admin panel dan memiliki desain minimal.
     - Menggunakan JavaScript dari `C:\laragon\www\WBE\frontend\admin\assets\js\register_superadmin.js` untuk validasi client-side.
     - Superadmin baru akan diminta untuk mengisi formulir pendaftaran dengan data berikut:
       - **Username**: Harus unik dan minimal 4 karakter.
@@ -533,7 +534,7 @@
       - **Konfirmasi Password**: Memastikan bahwa password yang dimasukkan sama.
       - **Tombol Register**: Untuk mengirimkan data pendaftaran ke backend.
     
-  - **Koneksi Backend**:
+  - **Koneksi Backend untuk Pendaftaran Superadmin**:
     - Form pendaftaran mengirim data ke `C:\laragon\www\WBE\frontend\admin\backend\handlers\admin_auth_handler.go` dengan fungsi `RegisterSuperadminHandler()`.
     - Handler menjalankan validasi tambahan menggunakan `C:\laragon\www\WBE\frontend\admin\backend\middleware\validator.go`.
     - Password di-hash menggunakan bcrypt di `C:\laragon\www\WBE\frontend\admin\backend\utils\password.go`.
@@ -551,14 +552,19 @@
     - Menggunakan HTTP redirect di `C:\laragon\www\WBE\frontend\admin\backend\handlers\admin_auth_handler.go`.
     
   - **Server Berjalan Normal**:
-    - Setelah Superadmin berhasil mendaftar, server akan melanjutkan berjalan normal, dan Superadmin dapat login untuk mengelola sistem.
+    - Setelah Superadmin berhasil mendaftar, server akan melanjutkan berjalan normal.
     - Middleware `superadmin_checker.go` hanya akan aktif jika tidak ada superadmin yang terdeteksi.
     
-  - **Login Admin**:
-    - Admin (Superadmin dan admin lainnya) dapat login melalui halaman `login_admin.html` yang sudah ada.
+  - **Halaman Login Admin (Login_admin.html)**:
+    - Halaman ini BERDIRI SENDIRI dan terpisah dari admin panel.
+    - Terletak di `C:\laragon\www\WBE\frontend\admin\template\login_admin.html`
+    - Digunakan oleh superadmin dan admin lain untuk login ke sistem.
+    - Tidak menggunakan template base.html dari admin panel untuk menjaga keamanan.
+    - Menggunakan JavaScript dari `C:\laragon\www\WBE\frontend\admin\assets\js\login_admin.js` untuk validasi dan interaksi.
     - Authenticasi ditangani oleh `C:\laragon\www\WBE\frontend\admin\backend\handlers\admin_auth_handler.go` dengan fungsi `LoginAdminHandler()`.
     - Token JWT disimpan sebagai HTTP-only cookie untuk keamanan.
     - Middleware di `C:\laragon\www\WBE\frontend\admin\backend\middleware\admin_auth_middleware.go` menangani verifikasi token dan role checking.
+    - Setelah login berhasil, admin diarahkan ke dashboard admin panel sesuai dengan role mereka.
 
   - **Model Data Admin**:
     - Struktur data admin didefinisikan di `C:\laragon\www\WBE\frontend\admin\backend\model\admin_model.go`:
@@ -581,7 +587,28 @@
     - Log disimpan di database untuk audit trail dan keamanan.
     - Fungsi `LogAdminActivity(adminID, action, details string)` di `C:\laragon\www\WBE\frontend\admin\backend\utils\logger.go` menangani pencatatan aktivitas.
 
-- **Halaman Admin**:
+  - **Pendaftaran Admin Role Lain oleh Superadmin**:
+    - Setelah superadmin berhasil login, mereka memiliki akses ke halaman administrator.html untuk mengelola admin lain.
+    - Terletak di `C:\laragon\www\WBE\frontend\admin\template\administrator.html`
+    - Memperluas `C:\laragon\www\WBE\frontend\admin\template\base.html` karena sudah berada di dalam admin panel.
+    - Halaman ini hanya bisa diakses oleh user dengan role 'superadmin'.
+    - Berisi form pendaftaran admin baru dengan field:
+      - Username (wajib)
+      - Email (wajib)
+      - Password (wajib)
+      - Role (admin, dengan level akses terbatas)
+      - Status (aktif/nonaktif)
+    - Superadmin dapat melihat daftar semua admin, mengedit, atau menonaktifkan akun admin.
+    - Fitur ini ditangani oleh `C:\laragon\www\WBE\frontend\admin\backend\handlers\administrator_handler.go`
+    - Menggunakan HTMX untuk operasi CRUD pada admin tanpa reload halaman penuh.
+    - Data admin biasa yang didaftarkan oleh superadmin disimpan dalam tabel `admins` yang sama dengan superadmin, hanya berbeda pada nilai kolom `role` yang diatur sebagai 'admin'.
+    - Query SQL untuk pendaftaran admin biasa:
+      ```sql
+      INSERT INTO admins (username, email, password, role, is_active) VALUES ($1, $2, $3, 'admin', $4) RETURNING id
+      ```
+    - Admin yang telah terdaftar dapat login melalui halaman login_admin.html seperti superadmin, tetapi memiliki akses yang lebih terbatas sesuai dengan rolenya.
+
+- **Halaman Admin Panel**:
   - `C:\laragon\www\WBE\frontend\admin\template\dashboard.html`
     - Halaman dashboard admin
     - Menampilkan statistik situs (jumlah user, transaksi, pendapatan)
