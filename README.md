@@ -351,6 +351,21 @@
     - `005_create_bets_table.go` - Membuat tabel bets
     - `006_create_bank_accounts_table.go` - Membuat tabel bank_accounts
     - `007_create_e_wallets_table.go` - Membuat tabel e_wallets
+    - `008_create_admins_table.go` - Membuat tabel admins untuk menyimpan data admin dan superadmin
+      - Struktur tabel:
+        ```sql
+        CREATE TABLE admins (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          username VARCHAR(50) NOT NULL UNIQUE,
+          email VARCHAR(100) NOT NULL UNIQUE,
+          password VARCHAR(255) NOT NULL,
+          role VARCHAR(20) NOT NULL DEFAULT 'admin',
+          is_active BOOLEAN DEFAULT true,
+          last_login TIMESTAMP,
+          created_at TIMESTAMP DEFAULT NOW(),
+          updated_at TIMESTAMP DEFAULT NOW()
+        );
+        ```
   
 - **Database Connection**:
   - `C:\laragon\www\WBE\frontend\user\backend\database\db.go`
@@ -495,6 +510,76 @@
   - `C:\laragon\www\WBE\frontend\admin\backend\router\admin_router.go`
     - Definisi routes untuk admin panel
     - Implementasi middleware khusus admin
+
+- **Alur Kerja Sistem Pengecekan Superadmin**:
+  - **Saat Server Dimulai**:
+    - Server akan menghubungkan ke database Supabase menggunakan koneksi yang telah dikonfigurasi dalam file `.env`.
+    - Implementasi di `C:\laragon\www\WBE\main.go` memanggil fungsi `checkSuperadmin()` saat inisialisasi server.
+    
+  - **Pengecekan Tabel `admins`**:
+    - Server akan melakukan pengecekan ke tabel `admins` untuk melihat apakah sudah ada entri dengan `role = 'superadmin'`.
+    - Implementasi di `C:\laragon\www\WBE\frontend\admin\backend\database\admin_queries.go` dengan fungsi `CountSuperadmins()` yang mengembalikan jumlah superadmin.
+    - Jika belum ada Superadmin, maka sistem akan otomatis mengarahkan ke halaman `register_superadmin.html` untuk mendaftarkan Superadmin pertama kali.
+    - Middleware di `C:\laragon\www\WBE\frontend\admin\backend\middleware\superadmin_checker.go` menangani logika redirect ini.
+    
+  - **Formulir Pendaftaran Superadmin**:
+    - Terletak di `C:\laragon\www\WBE\frontend\admin\template\register_superadmin.html`
+    - Memperluas `C:\laragon\www\WBE\frontend\admin\template\base.html` untuk tampilan yang konsisten.
+    - Menggunakan JavaScript dari `C:\laragon\www\WBE\frontend\admin\assets\js\register_superadmin.js` untuk validasi client-side.
+    - Superadmin baru akan diminta untuk mengisi formulir pendaftaran dengan data berikut:
+      - **Username**: Harus unik dan minimal 4 karakter.
+      - **Email**: Harus menggunakan format email yang valid (`@gmail.com`).
+      - **Password**: Harus di-hash dan dilengkapi dengan ikon untuk **show/hide password**.
+      - **Konfirmasi Password**: Memastikan bahwa password yang dimasukkan sama.
+      - **Tombol Register**: Untuk mengirimkan data pendaftaran ke backend.
+    
+  - **Koneksi Backend**:
+    - Form pendaftaran mengirim data ke `C:\laragon\www\WBE\frontend\admin\backend\handlers\admin_auth_handler.go` dengan fungsi `RegisterSuperadminHandler()`.
+    - Handler menjalankan validasi tambahan menggunakan `C:\laragon\www\WBE\frontend\admin\backend\middleware\validator.go`.
+    - Password di-hash menggunakan bcrypt di `C:\laragon\www\WBE\frontend\admin\backend\utils\password.go`.
+    
+  - **Penyimpanan Data Superadmin**:
+    - Setelah Superadmin mendaftar dengan benar, data akan disimpan di tabel `admins` dalam database Supabase dengan `role = 'superadmin'`.
+    - Fungsi `CreateAdmin(admin Admin)` di `C:\laragon\www\WBE\frontend\admin\backend\database\admin_queries.go` menangani penyimpanan data.
+    - Query SQL yang digunakan:
+      ```sql
+      INSERT INTO admins (username, email, password, role) VALUES ($1, $2, $3, 'superadmin') RETURNING id
+      ```
+    
+  - **Setelah Pendaftaran Sukses**:
+    - Jika pendaftaran berhasil, Superadmin diarahkan ke halaman login (`login_admin.html`).
+    - Menggunakan HTTP redirect di `C:\laragon\www\WBE\frontend\admin\backend\handlers\admin_auth_handler.go`.
+    
+  - **Server Berjalan Normal**:
+    - Setelah Superadmin berhasil mendaftar, server akan melanjutkan berjalan normal, dan Superadmin dapat login untuk mengelola sistem.
+    - Middleware `superadmin_checker.go` hanya akan aktif jika tidak ada superadmin yang terdeteksi.
+    
+  - **Login Admin**:
+    - Admin (Superadmin dan admin lainnya) dapat login melalui halaman `login_admin.html` yang sudah ada.
+    - Authenticasi ditangani oleh `C:\laragon\www\WBE\frontend\admin\backend\handlers\admin_auth_handler.go` dengan fungsi `LoginAdminHandler()`.
+    - Token JWT disimpan sebagai HTTP-only cookie untuk keamanan.
+    - Middleware di `C:\laragon\www\WBE\frontend\admin\backend\middleware\admin_auth_middleware.go` menangani verifikasi token dan role checking.
+
+  - **Model Data Admin**:
+    - Struktur data admin didefinisikan di `C:\laragon\www\WBE\frontend\admin\backend\model\admin_model.go`:
+      ```go
+      type Admin struct {
+          ID        string    `json:"id"`
+          Username  string    `json:"username" validate:"required,min=4,max=50"`
+          Email     string    `json:"email" validate:"required,email"`
+          Password  string    `json:"password,omitempty" validate:"required,min=8"`
+          Role      string    `json:"role" validate:"required,oneof=admin superadmin"`
+          IsActive  bool      `json:"is_active"`
+          LastLogin time.Time `json:"last_login,omitempty"`
+          CreatedAt time.Time `json:"created_at"`
+          UpdatedAt time.Time `json:"updated_at"`
+      }
+      ```
+
+  - **Log Akses Admin**:
+    - Semua aktivitas login dan tindakan admin dicatat di `C:\laragon\www\WBE\frontend\admin\backend\middleware\admin_logger_middleware.go`.
+    - Log disimpan di database untuk audit trail dan keamanan.
+    - Fungsi `LogAdminActivity(adminID, action, details string)` di `C:\laragon\www\WBE\frontend\admin\backend\utils\logger.go` menangani pencatatan aktivitas.
 
 - **Halaman Admin**:
   - `C:\laragon\www\WBE\frontend\admin\template\dashboard.html`
